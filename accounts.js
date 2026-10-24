@@ -3,7 +3,11 @@ function loadAccountsFromEnv() {
 
     // 读取旧版环境变量
     if(process.env.TY_ACCOUNTS) {
-        accounts = JSON.parse(process.env.TY_ACCOUNTS)
+        let raw = process.env.TY_ACCOUNTS.trim()
+        if ((raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith('"') && raw.endsWith('"'))) {
+            raw = raw.slice(1, -1).trim()
+        }
+        accounts = JSON.parse(raw)
     } else {
         // 从环境变量中读取账号，支持任意数量
         let index = 1

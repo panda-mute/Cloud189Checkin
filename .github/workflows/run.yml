@@ -8,28 +8,32 @@ on:
   workflow_dispatch:
   schedule:
     - cron: 35 2 * * *
+
+permissions:
+  contents: write
+  actions: write
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     environment: user
     steps:
       - name: 🔀 random delay 0-300 seconds
+        if: github.event_name == 'schedule'
         run: sleep $((RANDOM % 301))
 
       - name: 🔌 Check out code
-        uses: actions/checkout@main
+        uses: actions/checkout@v4
 
       - name: 🔨 Setup Node.js environment
-        uses: actions/setup-node@main
+        uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: npm
 
-      - name: 👾 Check if Debug is true
-        if: vars.debug == '1'
-        run: |
-          echo "CLOUD189_VERBOSE=1" >> $GITHUB_ENV
-      
+      - name: 🧹 Clean sample env
+        run: rm -f .env
+
       - name: 📹 Restore cached Cookie
         id: cache-cookie-restore
         uses: actions/cache/restore@v4
@@ -38,19 +42,38 @@ jobs:
           key: cloud189-token-${{ hashFiles('.token/*.json') }}
           restore-keys: cloud189-token-
 
-      - name: 🔧 Init secrets
-        uses: shine1594/secrets-to-env-action@master
-        with:
-          secrets: ${{ toJSON(secrets) }}
-          secrets_env: production
-          prefix_prod: ""
-          file_name_prod: .env
-
       - name: 📡 Init dependencies
         run: npm install
 
       - name: 🚀 Run
-        uses: nick-fields/retry@master
+        uses: nick-fields/retry@v3
+        env:
+          CLOUD189_VERBOSE: ${{ vars.debug == '1' && '1' || '' }}
+          TY_ACCOUNTS: ${{ secrets.TY_ACCOUNTS || vars.TY_ACCOUNTS }}
+          TY_USERNAME_1: ${{ secrets.TY_USERNAME_1 || vars.TY_USERNAME_1 }}
+          TY_PASSWORD_1: ${{ secrets.TY_PASSWORD_1 || vars.TY_PASSWORD_1 }}
+          TY_USERNAME_2: ${{ secrets.TY_USERNAME_2 || vars.TY_USERNAME_2 }}
+          TY_PASSWORD_2: ${{ secrets.TY_PASSWORD_2 || vars.TY_PASSWORD_2 }}
+          TY_USERNAME_3: ${{ secrets.TY_USERNAME_3 || vars.TY_USERNAME_3 }}
+          TY_PASSWORD_3: ${{ secrets.TY_PASSWORD_3 || vars.TY_PASSWORD_3 }}
+          TY_USERNAME_4: ${{ secrets.TY_USERNAME_4 || vars.TY_USERNAME_4 }}
+          TY_PASSWORD_4: ${{ secrets.TY_PASSWORD_4 || vars.TY_PASSWORD_4 }}
+          TY_USERNAME_5: ${{ secrets.TY_USERNAME_5 || vars.TY_USERNAME_5 }}
+          TY_PASSWORD_5: ${{ secrets.TY_PASSWORD_5 || vars.TY_PASSWORD_5 }}
+          SENDKEY: ${{ secrets.SENDKEY || vars.SENDKEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN || vars.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID || vars.TELEGRAM_CHAT_ID }}
+          WECOM_BOT_KEY: ${{ secrets.WECOM_BOT_KEY || vars.WECOM_BOT_KEY }}
+          WECOM_BOT_TELPHONE: ${{ secrets.WECOM_BOT_TELPHONE || vars.WECOM_BOT_TELPHONE }}
+          WX_PUSHER_APP_TOKEN: ${{ secrets.WX_PUSHER_APP_TOKEN || vars.WX_PUSHER_APP_TOKEN }}
+          WX_PUSHER_UID: ${{ secrets.WX_PUSHER_UID || vars.WX_PUSHER_UID }}
+          PUSH_PLUS_TOKEN: ${{ secrets.PUSH_PLUS_TOKEN || vars.PUSH_PLUS_TOKEN }}
+          WPUSH_APIKEY: ${{ secrets.WPUSH_APIKEY || vars.WPUSH_APIKEY }}
+          WPUSH_CHANNEL: ${{ secrets.WPUSH_CHANNEL || vars.WPUSH_CHANNEL }}
+          WPUSH_TOPIC_CODE: ${{ secrets.WPUSH_TOPIC_CODE || vars.WPUSH_TOPIC_CODE }}
+          SHOWDOC_KEY: ${{ secrets.SHOWDOC_KEY || vars.SHOWDOC_KEY }}
+          BARK_KEY: ${{ secrets.BARK_KEY || vars.BARK_KEY }}
+          BARK_SERVER: ${{ secrets.BARK_SERVER || vars.BARK_SERVER }}
         with:
           timeout_minutes: 30
           max_attempts: 3
@@ -70,7 +93,7 @@ jobs:
           key: cloud189-token-${{ env.TOKEN_HASH }}
 
       - name: 🚗 Keep Running
-        if: github.event_name == 'schedule'
+        if: always() && github.event_name == 'schedule'
         run: |
           git config --local user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
           git config --local user.name "${{ github.actor }}"
@@ -80,7 +103,8 @@ jobs:
           git push
 
       - name: 🎉 Delete old workflow run
-        uses: Mattraks/delete-workflow-runs@main
+        if: always()
+        uses: Mattraks/delete-workflow-runs@v2
         with:
           token: ${{ github.token }}
           repository: ${{ github.repository }}
